@@ -1,69 +1,51 @@
-import cats.effect.IO
-
 import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
 import cats.effect.unsafe.implicits.global
-
-import java.io.File
-import java.nio.file.Files
+import cats.effect.IO
 import scala.io.Source
+import math.BigDecimal.double2bigDecimal
 
-object calculatingAverageLengthOfWordsApp extends App {
+object calculatingAverageLengthOfWordsApp1 {
 
-  val processorCount = Runtime.getRuntime.availableProcessors()
+  def main (args: Array[String]): Unit =
 
-  val textHamlet = Source.fromURL("https://raw.githubusercontent.com/benschw/shakespeare-txt/master/shakespeare-hamlet-25.txt")
-    .mkString
-    .replaceAll("\\P{L}", " ")
-    .split(" ")
-    .filter(element => element.nonEmpty)
+    val textHamlet1 = Source.fromURL("https://raw.githubusercontent.com/benschw/shakespeare-txt/master/shakespeare-hamlet-25.txt")
+    val textHamlet = textHamlet1
+      .mkString
+      .replaceAll("\\P{L}", " ")
+      .split(" ")
+      .filter(element => element.nonEmpty)
 
-  /*def readInts(f: File): Array[Int] =
-    Files
-      .readString(f.toPath)
-      .split('\n')
-      .map(_.toInt)*/
+    textHamlet1.close()
 
-  val loadInts = textHamlet.map(_.length)
+    val isEven: String => Boolean = textHamlet.indexOf(_) % 2 == 0
+    val isOdd: String => Boolean = textHamlet.indexOf(_) % 2 == 1
 
-  println(textHamlet(4))
-  println(loadInts(4))
-  println(textHamlet.length)
-  println(loadInts.length)
+    val ioText: IO[Array[String]] = IO{textHamlet}
 
-  val isEven: Int => Boolean = _ % 2 == 0
-  val isOdd:  Int => Boolean = _ % 2 == 1
+    extension (arr: Array[String])
+      def average: Double = 1.0 * arr.map(_.length).sum / arr.length
 
-  val evenOddThreshold = 2.0
-
-  val ioInts: IO[Array[Int]] = IO{loadInts}
-
-  extension (arr: Array[Int])
-    def average: Double = 1.0 * arr.sum / arr.length
-
-  def filteredAverage(pred: Int => Boolean)(ints: Array[Int]): IO[Double] =
-    IO{
-      println(Thread.currentThread.getName)
-      ints
-        .filter(pred)
-        .average
+    def filteredAverage(pred: String => Boolean)(ints: Array[String]): IO[Double] =
+      IO{
+        println(Thread.currentThread.getName)
+        ints
+          .filter(pred)
+          .average
     }
 
-  val cpuPool: ExecutionContext = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(2))
+    val cpuPool = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(4))
 
-  val ioAvgEven = filteredAverage(isEven)(_)
-  val ioAvgOdd = filteredAverage(isOdd)(_)
-  val ioDiff =
-    for
-      ints <- ioInts
-      even <- ioAvgEven(ints).evalOn(cpuPool)
-      odd  <- ioAvgOdd(ints).evalOn(cpuPool)
-    yield
-      math.abs(even - odd)
+    val ioAvgEven = filteredAverage(isEven)(_)
+    val ioAvgOdd = filteredAverage(isOdd)(_)
+    val ioDiff =
+      for
+        text <- ioText
+        even <- ioAvgEven(text).evalOn(cpuPool)
+        odd  <- ioAvgOdd(text).evalOn(cpuPool)
+      yield
+        println((even + odd) / 2 setScale(1, BigDecimal.RoundingMode.HALF_UP))
 
-  val diff = ioDiff.unsafeRunSync()
-  //assertTrue(diff < evenOddThreshold)
-  println(average)
-  println(diff)
-
+    ioDiff.unsafeRunSync()
+    cpuPool.shutdown()
 }
