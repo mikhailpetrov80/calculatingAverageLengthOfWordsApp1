@@ -1,13 +1,11 @@
 import java.util.concurrent.Executors
 import scala.concurrent.ExecutionContext
-import cats.effect.unsafe.implicits.global
 import cats.effect.IO
 import scala.io.Source
 import math.BigDecimal.double2bigDecimal
+import cats.effect.unsafe.implicits._
 
-object calculatingAverageLengthOfWordsApp1 {
-
-  def main (args: Array[String]): Unit =
+@main def calculatingAverageLengthOfWordsApp1 (): Unit =
 
     val textHamlet1 = Source.fromURL("https://raw.githubusercontent.com/benschw/shakespeare-txt/master/shakespeare-hamlet-25.txt")
     val textHamlet = textHamlet1
@@ -48,4 +46,4 @@ object calculatingAverageLengthOfWordsApp1 {
 
     ioDiff.unsafeRunSync()
     cpuPool.shutdown()
-}
+
