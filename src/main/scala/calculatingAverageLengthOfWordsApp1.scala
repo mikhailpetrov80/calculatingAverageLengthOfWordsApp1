@@ -3,7 +3,7 @@ import scala.concurrent.ExecutionContext
 import cats.effect.IO
 import scala.io.Source
 import math.BigDecimal.double2bigDecimal
-import cats.effect.unsafe.implicits._
+import cats.effect.unsafe.implicits.global
 
 @main def calculatingAverageLengthOfWordsApp1 (): Unit =
 
@@ -22,27 +22,27 @@ import cats.effect.unsafe.implicits._
     val ioText: IO[Array[String]] = IO{textHamlet}
 
     extension (arr: Array[String])
-      def average: Double = 1.0 * arr.map(_.length).sum / arr.length
+      def sumWords: Double = 1.0 * arr.map(_.length).sum
 
-    def filteredAverage(pred: String => Boolean)(ints: Array[String]): IO[Double] =
+    def filteredSumWords(pred: String => Boolean)(texts: Array[String]): IO[Double] =
       IO{
         println(Thread.currentThread.getName)
-        ints
+        texts
           .filter(pred)
-          .average
+          .sumWords
     }
 
     val cpuPool = ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(4))
 
-    val ioAvgEven = filteredAverage(isEven)(_)
-    val ioAvgOdd = filteredAverage(isOdd)(_)
+    val ioAvgEven = filteredSumWords(isEven)(_)
+    val ioAvgOdd = filteredSumWords(isOdd)(_)
     val ioDiff =
       for
         text <- ioText
         even <- ioAvgEven(text).evalOn(cpuPool)
         odd  <- ioAvgOdd(text).evalOn(cpuPool)
       yield
-        println((even + odd) / 2 setScale(1, BigDecimal.RoundingMode.HALF_UP))
+        println((even + odd) / text.length setScale(1, BigDecimal.RoundingMode.HALF_UP))
 
     ioDiff.unsafeRunSync()
     cpuPool.shutdown()
